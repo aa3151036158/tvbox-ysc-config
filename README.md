@@ -53,18 +53,18 @@ tvbox-ysc-config/
 
 | 类型 | 地址 | 说明 |
 | --- | --- | --- |
-| **多仓订阅（推荐）** | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/多仓订阅.json` | App 内可在各源之间切换 |
-| **单仓聚合** | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/单仓聚合.json` | 所有源站点合并成一个，无需切换 |
-| 单仓 · 肥猫 | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/feimao.json` | 单独使用某一个源 |
-| 单仓 · 饭太硬 | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/fantaiying.json` | |
-| 单仓 · 王二小 | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/wangerxiao.json` | |
-| 单仓 · 讴歌 | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/ouge.json` | |
-| 单仓 · 摸鱼 | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/moyu.json` | |
-| 单仓 · OK | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/ok.json` | |
-| 单仓 · 小米 | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/xiaomi.json` | |
-| 单仓 · 巧记 | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/qiaoji.json` | |
-| 单仓 · 4K小盒子 | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/4k.json` | |
-| 单仓 · 潇洒 | `https://raw.githubusercontent.com/Lightconer/tvbox-ysc-config/main/output/xiaosa.json` | |
+| **多仓订阅（推荐）** | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/多仓订阅.json` | App 内可在各源之间切换 |
+| **单仓聚合** | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/单仓聚合.json` | 所有源站点合并成一个，无需切换 |
+| 单仓 · 肥猫 | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/feimao.json` | 单独使用某一个源 |
+| 单仓 · 饭太硬 | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/fantaiying.json` | |
+| 单仓 · 王二小 | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/wangerxiao.json` | |
+| 单仓 · 讴歌 | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/ouge.json` | |
+| 单仓 · 摸鱼 | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/moyu.json` | |
+| 单仓 · OK | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/ok.json` | |
+| 单仓 · 小米 | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/xiaomi.json` | |
+| 单仓 · 巧记 | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/qiaoji.json` | |
+| 单仓 · 4K小盒子 | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/4k.json` | |
+| 单仓 · 潇洒 | `https://raw.githubusercontent.com/aa3151036158/tvbox-ysc-config/main/output/xiaosa.json` | |
 
 > 多仓订阅与单仓文件里的地址由脚本根据 `GITHUB_REPOSITORY` 环境变量自动生成。若国内直连 raw.githubusercontent.com 慢，可套一层 `ghproxy` / `gh-proxy` 等加速前缀。
 
@@ -116,7 +116,7 @@ tvbox-ysc-config/
 
 ```bash
 pip install -r requirements.txt
-REPO=Lightconer/tvbox-ysc-config python scripts/update.py
+REPO=aa3151036158/tvbox-ysc-config python scripts/update.py
 ```
 
 ## 七、脚本特性
