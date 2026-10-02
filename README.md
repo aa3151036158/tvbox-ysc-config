@@ -40,6 +40,7 @@ tvbox-ysc-config/
 │   ├── 单仓聚合.json               # 单仓聚合（所有源 sites 合并成一个，开箱即用）
 │   ├── shield.json                # shields.io 状态徽章数据
 │   ├── status.json                # 各源更新状态（机器可读）
+│   ├── live.txt                   # 直播源（由 live_sources 抓取后落盘，已注入单仓聚合）
 │   ├── feimao.json / fantaiying.json / ...  # 各源独立配置
 │   └── ...
 ├── requirements.txt
@@ -95,6 +96,22 @@ tvbox-ysc-config/
 - `urls`：依次尝试的地址列表，第一个成功的会被使用；可按"主地址在前、备用在后"排列。
 - 修改后推送到 `main` 分支即会自动触发一次更新。
 
+### 直播源（live_sources）
+
+`sources` 之外的 `live_sources` 用于聚合**纯文本直播源**（`名称,地址` 格式，支持 `#genre#` 分组行）：
+
+```json
+"live_sources": [
+  {
+    "id": "live",
+    "name": "直播源",
+    "urls": ["https://cdn.jsdelivr.net/gh/Lightconer/TVBox-Sources@main/output/live.txt"]
+  }
+]
+```
+
+脚本会把它抓取落盘为 `output/live.txt`，并作为一条 `lives` 记录注入 `单仓聚合.json`（带 `epg`/`logo`）；抓取失败时沿用上次落盘的缓存。
+
 ## 六、本地手动更新（可选）
 
 ```bash
@@ -109,6 +126,7 @@ REPO=Lightconer/tvbox-ysc-config python scripts/update.py
 - **智能重试**：仅对超时、连接错误、空响应等瞬态问题退避重试；4xx/5xx 等确定性失败直接跳过。
 - **反爬兼容**：使用简洁 UA（部分接口对完整浏览器 UA 下发挑战页），自动剔除 JSON 内嵌的 `//` 注释，兼容未转义控制字符。
 - **聚合单仓**：把所有成功源的 `sites` 按 key 去重合并（重复 key 自动加源前缀），`lives/parses` 等列表合并去重。
+- **直播源聚合**：单独抓取 `live_sources` 里的纯文本直播源，落盘 `output/live.txt` 后注入聚合单仓的 `lives`。
 - **状态可视化**：每次更新自动刷新 README 状态表与 shields.io 徽章。
 - **部分成功可用**：只要有一个源成功就产出可用订阅，失败源记录在 `status.json` 与 README 状态表。
 

@@ -10,7 +10,8 @@
   4. 将每个源的最新配置保存到 output/<id>.json
   5. 生成多仓订阅文件 output/多仓订阅.json（可直接填进影视仓的"订阅"或"多仓"）
   6. 生成聚合单仓 output/单仓聚合.json（所有源 sites/lives/parses 合并去重）
-  7. 生成 shields 徽章 output/shield.json，并把各源状态写回 README
+  7. 抓取 config/sources.json 中 live_sources 的纯文本直播源，落盘 output/<id>.txt 并注入聚合单仓的 lives
+  8. 生成 shields 徽章 output/shield.json，并把各源状态写回 README
 兼容：本脚本同时兼容 GitHub Actions 自动运行 与 本地手动运行。
 在 GitHub Actions 中，环境变量 GITHUB_REPOSITORY 会被自动注入（格式 owner/repo），
 用于拼出多仓订阅里指向本仓库 raw 文件的完整 URL。
@@ -95,6 +96,59 @@ def is_valid_tvbox_config(data) -> bool:
     return any(key in data for key in TVBOX_KEYS)
 
 
+# 合法的直播源地址协议前缀
+LIVE_URL_PREFIXES = ("http://", "https://", "proxy://")
+
+
+def is_valid_live_text(text: str) -> bool:
+    """粗略校验：内容是否像 TVBox 直播源文本（每行『频道名,地址』，支持 #genre# 分组行）。"""
+    hits = 0
+    for line in (text or "").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split(",", 1)
+        if len(parts) == 2 and parts[1].strip().lower().startswith(LIVE_URL_PREFIXES):
+            hits += 1
+            if hits >= 3:
+                return True
+    return False
+
+
+def fetch_live_text(url: str) -> str:
+    """抓取纯文本直播源（txt/m3u）；失败时抛出异常。与 fetch_config 的区别是不做 JSON 解析。"""
+    target = idn_encode(url)
+    last_err = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = requests.get(
+                target,
+                headers={
+                    "User-Agent": USER_AGENT,
+                    "Accept": "text/plain,*/*",
+                },
+                timeout=TIMEOUT,
+                allow_redirects=True,
+            )
+            resp.raise_for_status()
+            text = resp.text.lstrip("\ufeff").strip()
+            if not is_valid_live_text(text):
+                raise ValueError("返回内容不是直播源文本（缺少『频道名,地址』行）")
+            return text
+        except requests.exceptions.HTTPError as e:
+            last_err = e
+            break  # 4xx/5xx 为确定性失败
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            if attempt < MAX_RETRIES:
+                wait = RETRY_BACKOFF * attempt * 2
+                print(f"      (第 {attempt} 次失败：{e}，{wait}s 后重试)")
+                time.sleep(wait)
+            else:
+                break
+    raise last_err
+
+
 def _should_retry(err: Exception, resp_text_len: int = -1) -> bool:
     """判断失败是否值得重试：
     - 超时/连接类瞬态错误：重试
@@ -163,11 +217,12 @@ def _merge_list(fetched, field):
     return out
 
 
-def merge_configs(fetched):
+def merge_configs(fetched, extra_lives=None):
     """把多个单仓配置合并成一个聚合单仓：
     - 以第一个成功源为基底（保留 spider/logo/wallpaper 等）
     - sites 按 key 去重，重复 key 加源 id 前缀
     - lives/parses/doh/rules/flags/exts 等列表合并去重
+    - extra_lives：外部直播源（如 config 里的 live_sources），追加到 lives 末尾
     fetched: [(sid, name, data_dict), ...]
     """
     if not fetched:
@@ -205,6 +260,19 @@ def merge_configs(fetched):
 
     for field in ("lives", "parses", "doh", "rules", "flags", "exts"):
         merged[field] = _merge_list(fetched, field)
+
+    # 追加外部直播源（按 name/url 去重，避免与各源自带的 lives 重复）
+    existing = {
+        (item.get("name") or item.get("url"))
+        for item in merged["lives"]
+        if isinstance(item, dict)
+    }
+    for item in extra_lives or []:
+        ident = item.get("name") or item.get("url")
+        if ident in existing:
+            continue
+        existing.add(ident)
+        merged["lives"].append(item)
 
     return merged
 
@@ -348,18 +416,72 @@ def main() -> int:
         # 源之间稍作间隔，避免集中请求被限流
         time.sleep(SOURCE_INTERVAL)
 
+    # 抓取外部直播源（纯文本 txt）：落盘到 output/<id>.txt，并注入聚合单仓的 lives
+    live_entries = []
+    for src in cfg.get("live_sources", []):
+        name = src.get("name", "直播")
+        sid = src.get("id", "live")
+        entry = {"id": sid, "name": name, "ok": False, "used_url": None, "error": None}
+        text = None
+
+        for url in src.get("urls", []):
+            try:
+                text = fetch_live_text(url)
+                entry["ok"] = True
+                entry["used_url"] = url
+                entry["error"] = None
+                print(f"[OK]   {name} <- {url}")
+                break
+            except Exception as e:  # noqa: BLE001
+                print(f"[FAIL] {name}  {url}  ->  {e}")
+                entry["error"] = str(e)
+            time.sleep(URL_INTERVAL)
+
+        out_path = os.path.join(OUTPUT_DIR, f"{sid}.txt")
+        if text is None and os.path.exists(out_path):
+            # 本次没抓到：沿用上次落盘的缓存
+            try:
+                with open(out_path, "r", encoding="utf-8") as f:
+                    cached_text = f.read()
+                if is_valid_live_text(cached_text):
+                    text = cached_text
+                    entry["ok"] = True
+                    entry["cached"] = True
+                    entry["used_url"] = "(缓存)"
+                    print(f"[CACHE] {name}  使用上次缓存直播源")
+            except Exception:  # noqa: BLE001
+                pass
+
+        if text is not None:
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(text if text.endswith("\n") else text + "\n")
+            live_entries.append(
+                {
+                    "name": name,
+                    "type": 0,
+                    "playerType": 1,
+                    "url": f"{raw_base}/{sid}.txt",
+                    "epg": "https://epg.112114.xyz/?ch={name}&date={date}",
+                    "logo": "https://epg.112114.xyz/logo/{name}.png",
+                }
+            )
+        status.setdefault("live_sources", []).append(entry)
+
     # 生成多仓订阅文件（影视仓"订阅/多仓"格式）
     sub_path = os.path.join(OUTPUT_DIR, "多仓订阅.json")
     with open(sub_path, "w", encoding="utf-8") as f:
         json.dump({"urls": subscriptions}, f, ensure_ascii=False, indent=2)
 
     # 生成聚合单仓文件（把所有成功源的 sites/lives/parses 合并成一个单仓）
-    merged = merge_configs(fetched)
+    merged = merge_configs(fetched, live_entries)
     merged_path = os.path.join(OUTPUT_DIR, "单仓聚合.json")
     if merged is not None:
         with open(merged_path, "w", encoding="utf-8") as f:
             json.dump(merged, f, ensure_ascii=False, indent=2)
-        print(f"聚合单仓：{merged_path}（共 {len(merged.get('sites', []))} 个站点）")
+        print(
+            f"聚合单仓：{merged_path}（共 {len(merged.get('sites', []))} 个站点、"
+            f"{len(merged.get('lives', []))} 个直播源）"
+        )
 
     # 生成更新状态文件（时间取全部抓取完成之后）
     status["updated_at"] = datetime.datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")

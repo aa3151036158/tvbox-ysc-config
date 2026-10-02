@@ -96,5 +96,15 @@
         "https://9877.kstore.space/AnotherD/api.json"
       ]
     }
+  ],
+  "live_sources": [
+    {
+      "id": "live",
+      "name": "直播源",
+      "urls": [
+        "https://cdn.jsdelivr.net/gh/Lightconer/TVBox-Sources@main/output/live.txt",
+        "https://raw.githubusercontent.com/Lightconer/TVBox-Sources/main/output/live.txt"
+      ]
+    }
   ]
 }
