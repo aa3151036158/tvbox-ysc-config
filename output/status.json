@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-02 03:20:39",
+  "updated_at": "2026-10-02 12:10:57",
   "repo": "aa3151036158/tvbox-ysc-config",
   "sources": [
     {
@@ -72,6 +72,15 @@
       "ok": false,
       "used_url": null,
       "error": "404 Client Error:  for url: https://9877.kstore.space/AnotherD/api.json"
+    }
+  ],
+  "live_sources": [
+    {
+      "id": "live",
+      "name": "直播源",
+      "ok": true,
+      "used_url": "https://cdn.jsdelivr.net/gh/Lightconer/TVBox-Sources@main/output/live.txt",
+      "error": null
     }
   ]
 }
